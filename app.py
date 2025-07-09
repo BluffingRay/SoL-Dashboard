@@ -14,7 +14,7 @@ st.set_page_config(
 # -------------------------------
 # Initialize Authentication and Apply Custom Styles
 # -------------------------------
-init_auth()
+# init_auth()
 apply_styles()
 
 # -------------------------------
