@@ -13,7 +13,7 @@ def apply_styles():
     # ---------------------------------------
 
     def apply_styles():
-        with open("C:\\Users\\Admin\\Documents\\3rd Year\\Summer\\Dashboard\\banner.svg", "r", encoding="utf-8") as f:
+        with open("banner.svg", "r", encoding="utf-8") as f:
             svg_content = f.read()
 
         st.markdown(
@@ -22,7 +22,7 @@ def apply_styles():
             .full-width-svg-container svg {{
                 width: 100% !important;
                 height: auto !important;
-            }}
+            }} 
             </style>
             <div class="full-width-svg-container" style="margin-bottom: 0.5rem;">
                 {svg_content}
