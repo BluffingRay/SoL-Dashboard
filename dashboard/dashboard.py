@@ -17,7 +17,6 @@ from utils.metrics import (
 # Main Dashboard Page Function
 # -------------------------------
 def show():
-    st.subheader("📊 Program Summary")
 
     # -------------------------------
     # Load Data from Google Sheets
@@ -46,6 +45,8 @@ def show():
     with col2:
         selected_year = st.selectbox("📅 Select Year", year_options) 
 
+    st.subheader("📊 Program Summary")
+
     # -------------------------------
     # Compute Metrics
     # -------------------------------
@@ -61,7 +62,9 @@ def show():
     # -------------------------------
     # Graphical Insights
     # -------------------------------
+    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
     st.subheader("📈 Graphical Insights")
+    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
 
     # ===== Enrollment Bar Chart =====
     col1, col2 = st.columns(2)
