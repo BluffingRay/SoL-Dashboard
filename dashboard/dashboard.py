@@ -1,0 +1,153 @@
+# -------------------------------
+# Imports
+# -------------------------------
+import streamlit as st
+import pandas as pd
+import altair as alt
+
+from config import get_gspread_client, SPREADSHEET_NAME, SHEET_INDEXES
+from utils.metrics import (
+    compute_dropout,
+    compute_graduation_rate,
+    compute_cohort_survival_rate,
+    show_kpi_cards
+)
+
+# -------------------------------
+# Main Dashboard Page Function
+# -------------------------------
+def show():
+    st.subheader("📊 Program Summary")
+
+    # -------------------------------
+    # Load Data from Google Sheets
+    # -------------------------------
+    client = get_gspread_client()
+    workbook = client.open(SPREADSHEET_NAME)
+
+    sheet1 = workbook.get_worksheet(SHEET_INDEXES["enrollment"])
+    sheet2 = workbook.get_worksheet(SHEET_INDEXES["graduation"])
+    sheet3 = workbook.get_worksheet(SHEET_INDEXES["cohort"])
+
+    enroll_df = pd.DataFrame(sheet1.get_all_records())
+    grad_df_raw = pd.DataFrame(sheet2.get_all_records())
+    cohort_df_raw = pd.DataFrame(sheet3.get_all_records())
+
+    # Clean column headers and format
+    enroll_df.columns = enroll_df.columns.str.strip()
+    enroll_df["Year"] = enroll_df["Year"].astype(str)
+
+    # -------------------------------
+    # Year Selection Dropdown
+    # -------------------------------
+    year_options = ["All Years"] + [y for y in enroll_df["Year"].unique() if y != "Total"]
+
+    col1, col2, col3 = st.columns([6, 2, 0.1])  # spacing layout
+    with col2:
+        selected_year = st.selectbox("📅 Select Year", year_options) 
+
+    # -------------------------------
+    # Compute Metrics
+    # -------------------------------
+    grad_df = compute_graduation_rate(grad_df_raw)
+    cohort_df = compute_cohort_survival_rate(cohort_df_raw)
+    dropout_df = compute_dropout(enroll_df)
+
+    # -------------------------------
+    # Display KPI Cards
+    # -------------------------------
+    show_kpi_cards(selected_year, enroll_df, grad_df, cohort_df, dropout_df)
+
+    # -------------------------------
+    # Graphical Insights
+    # -------------------------------
+    st.subheader("📈 Graphical Insights")
+
+    # ===== Enrollment Bar Chart =====
+    col1, col2 = st.columns(2)
+    with col1:
+        df_plot = enroll_df.copy()
+
+        if selected_year != "All Years":
+            df_plot = df_plot[df_plot["Year"] == selected_year]
+        else:
+            total_row = {
+                "Year": "Total",
+                "First Year": df_plot["First Year"].sum(),
+                "Second Year": df_plot["Second Year"].sum(),
+                "Third Year": df_plot["Third Year"].sum(),
+                "Fourth Year": df_plot["Fourth Year"].sum()
+            }
+            df_plot = pd.concat([df_plot, pd.DataFrame([total_row])], ignore_index=True)
+
+        df_melted = df_plot.melt(id_vars="Year", var_name="Level", value_name="Count")
+        level_order = ["First Year", "Second Year", "Third Year", "Fourth Year"]
+
+        chart = alt.Chart(df_melted).mark_bar().encode(
+            x=alt.X('Year:N', title='Year'),
+            y=alt.Y('Count:Q', title='Enrollment'),
+            color=alt.Color('Level:N', sort=level_order),
+            xOffset=alt.XOffset('Level:N', sort=level_order),
+            tooltip=["Year", "Level", "Count"]
+        ).properties( 
+            title="🎓 Enrollment by Year Level",
+            width=700,
+            height=400
+        )
+
+        st.altair_chart(chart, use_container_width=True)
+
+    # ===== Graduation Rate Line Chart =====
+    with col2:
+        grad_plot = grad_df.copy()
+        if selected_year != "All Years":
+            grad_plot = grad_plot[grad_plot["Year"] == selected_year]
+
+        line = alt.Chart(grad_plot).mark_line(point=True, color="#551012").encode(
+            x=alt.X("Year:N"),
+            y=alt.Y("Graduation Rate (%):Q", scale=alt.Scale(domain=[0, 100])),
+            tooltip=["Year", alt.Tooltip("Graduation Rate (%)", format=".1f")]
+        ).properties(
+            title="🎓 Graduation Rate",
+            width=700,
+            height=400
+        )
+
+        st.altair_chart(line, use_container_width=True)
+
+    # ===== Cohort Survival Rate Line Chart =====
+    col3, col4 = st.columns(2)
+    with col3:
+        survival_plot = cohort_df.copy()
+        if selected_year != "All Years":
+            survival_plot = survival_plot[survival_plot["Year"] == selected_year]
+
+        survival_line = alt.Chart(survival_plot).mark_line(point=True).encode(
+            x="Year:N",
+            y=alt.Y("Cohort Survival Rate:Q", title="Survival Rate (%)"),
+            tooltip=["Year", alt.Tooltip("Cohort Survival Rate", format=".1f")]
+        ).properties(
+            title="📈 Cohort Survival Rate",
+            width=700,
+            height=400
+        )
+
+        st.altair_chart(survival_line, use_container_width=True)
+
+    # ===== Drop-out Rate Line Chart =====
+    with col4:
+        dropout_plot = dropout_df.copy()
+        if selected_year != "All Years":
+            dropout_plot = dropout_plot[dropout_plot["Year"] == int(selected_year)]
+
+        dropout_line = alt.Chart(dropout_plot).mark_line(point=True, color="#990000").encode(
+            x="Year:O",
+            y=alt.Y("Drop-out Rate:Q", title="Drop-out Rate (%)"),
+            tooltip=["Year", alt.Tooltip("Drop-out Rate", format=".2f")]
+        ).properties(
+            title="📉 Drop-out Rate",
+            width=700,
+            height=400
+        )
+
+        st.altair_chart(dropout_line, use_container_width=True)
