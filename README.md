@@ -2,6 +2,8 @@
 
 An internal dashboard developed to help the University of Southeastern Philippines - School of Law monitor and analyze key academic metrics. This project was built as part of a summer internship by **Raymar M. Serondo** and **Yman Rey M. Fernandez**, BSCS 3-A (Data Science) interns, in 2025.
 
+Access it here: https://sol-dashboard.streamlit.app/
+
 ## Features
 
 - Visualizations of enrollment trends, graduation rates, cohort survival, and drop-out rates
