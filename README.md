@@ -16,7 +16,6 @@ An internal dashboard developed to help the University of Southeastern Philippin
 - Streamlit (Web App Framework)
 - Google Sheets API (Data Storage)
 - Altair (Charts & Visualizations)
-- Pandas (Data Processing)
 
 
 ## Known Issues
@@ -24,8 +23,3 @@ An internal dashboard developed to help the University of Southeastern Philippin
 Graph resizing issue: When resizing the browser window (e.g. making it narrow then wide again), charts may remain squeezed and not re-expand properly.
 Workaround: Refresh the page after resizing to restore the layout.
 
-## Authors
-- Raymar M. Serondo
-- Yman Rey M. Fernandez
-BSCS 3-A (Data Science Interns)
-University of Southeastern Philippines
