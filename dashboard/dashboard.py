@@ -94,8 +94,8 @@ def show():
             tooltip=["Year", "Level", "Count"]
         ).properties( 
             title="🎓 Enrollment by Year Level",
-            width=700,
-            height=400
+            height=400,
+            autosize={'type': 'fit'}
         )
 
         st.altair_chart(chart, use_container_width=True)
@@ -112,7 +112,6 @@ def show():
             tooltip=["Year", alt.Tooltip("Graduation Rate (%)", format=".1f")]
         ).properties(
             title="🎓 Graduation Rate",
-            width=700,
             height=400
         )
 
@@ -131,7 +130,6 @@ def show():
             tooltip=["Year", alt.Tooltip("Cohort Survival Rate", format=".1f")]
         ).properties(
             title="📈 Cohort Survival Rate",
-            width=700,
             height=400
         )
 
@@ -149,8 +147,10 @@ def show():
             tooltip=["Year", alt.Tooltip("Drop-out Rate", format=".2f")]
         ).properties(
             title="📉 Drop-out Rate",
-            width=700,
             height=400
         )
 
         st.altair_chart(dropout_line, use_container_width=True)
+
+
+

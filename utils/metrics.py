@@ -70,13 +70,13 @@ def compute_cohort_survival_rate(cohort_df):
 
     cohort_df["Cohort Survival Rate"] = cohort_df.apply(
         lambda row: (
-            row["Cohort Enrollment"] /
-            row["Cohort Graduates"] * 100
-        ) if row["Cohort Graduates"] > 0 else 0,
+            row["Cohort Graduates"] / row["Cohort Enrollment"] * 100
+        ) if row["Cohort Enrollment"] > 0 else 0,
         axis=1
     )
 
     return cohort_df
+
 
 
 def compute_total_enrollment(year, df):
