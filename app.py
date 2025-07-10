@@ -21,13 +21,13 @@ apply_styles()
 # Sidebar Navigation
 # -------------------------------
 st.sidebar.markdown(
-    "<div class='menu-title'>📚 Dashy</div>", 
+    "<div class='menu-title'>SoL - Dashboard</div>", 
     unsafe_allow_html=True
 )
 
 tabs = {
     "🏠 Dashboard": dashboard.show,   
-    "📤 Upload Data": upload.show,
+    "🗃️ Data": upload.show,
     "ℹ️ About": about.show   
 }
 

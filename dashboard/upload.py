@@ -1,41 +1,103 @@
 import streamlit as st
+import time
 import pandas as pd
 from config import get_gspread_client, SPREADSHEET_NAME, SHEET_INDEXES
 
+# -------------------------------
+# Main Upload Data Page
+# -------------------------------
 def show():
+    # ---------------------------------------
+    # Authentication
+    # ---------------------------------------
+    if "upload_auth" not in st.session_state:
+        st.session_state.upload_auth = False
 
+    # Get secret key from secrets.toml
+    required_key = st.secrets["auth"]["secret_key"]
+
+    if not st.session_state.upload_auth:
+        # Apply custom style for centering
+        st.markdown("""
+            <style>
+                .centered-box {
+                    display: flex;
+                    justify-content: center;
+                    margin-top: 4rem;
+                }
+                .stTextInput>div>input {
+                    text-align: center;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+
+        # --- Auth UI ---
+        with st.container():
+            cols = st.columns([1, 2, 1])  # Empty - Center - Empty
+            with cols[1]:
+                st.markdown("### 🔐 Enter Access Key")
+                with st.form("auth_form"):
+                    input_key = st.text_input("Secret Key", type="password")
+                    submit = st.form_submit_button("Submit")
+                    if submit:
+                        if input_key == required_key:
+                            st.session_state.upload_auth = True
+                            st.success("✅ Access granted.")
+                            st.rerun()
+                        else:
+                            st.error("❌ Invalid key. Please try again.")
+        return  # Don't continue if not authorized
+    
+    # ---------------------------------------
+    # Page Setup
+    # ---------------------------------------
+    st.set_page_config(layout="wide")
+    st.title("🗃️ Data")
+
+    # -------- Styles (including overlay) --------
     st.markdown("""
         <style>
-        /* Make rows tighter only inside tab content */
+        /* Main layout adjustments */
         div[data-baseweb="tab-panel"] [data-testid="stVerticalBlockBorderWrapper"] {
             margin-top: -0.75rem !important;
             margin-bottom: -0.75rem !important;
         }
-
-        /* Remove excess padding inside form containers */
         div[data-baseweb="tab-panel"] [data-testid="stElementContainer"] {
             padding-top: -0.1rem !important;
             padding-bottom: -0.1rem !important;
             margin-top: 0 !important;
             margin-bottom: 0 !important;
         }
-
-        /* Optional: shrink horizontal space between columns */
         div[data-baseweb="tab-panel"] .stColumn {
             padding-left: -0.25rem !important;
             padding-right: -0.25rem !important;
         }
-                
-        /* Add margin ABOVE the Add Row button container */
         div[data-baseweb="tab-panel"] [data-testid="stButton"] {
             margin-top: 1rem !important;
+        }
+
+        /* Fullscreen overlay */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: #111111; /* deep blackish text */
+            font-weight: bold;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    st.set_page_config(layout="wide")
-    st.title("📤 Upload Data")
-
+    # ---------------------------------------
+    # Load Google Sheets Data
+    # ---------------------------------------
     @st.cache_resource(show_spinner="Loading spreadsheet...")
     def load_all_data():
         client = get_gspread_client()
@@ -57,15 +119,17 @@ def show():
     if "form_data" not in st.session_state:
         st.session_state.form_data = load_all_data()
 
-    # Track pending actions
-    if "pending_add" not in st.session_state:
-        st.session_state.pending_add = None
-    if "pending_remove" not in st.session_state:
-        st.session_state.pending_remove = None
+    if "show_success" not in st.session_state:
+        st.session_state.show_success = False
+    if "submitting" not in st.session_state:
+        st.session_state.submitting = False
 
+    # ---------------------------------------
+    # Render Editable Tables
+    # ---------------------------------------
     def render_table(label, key):
         st.markdown(f"### {label}")
-        df = st.session_state.form_data[key]
+        df = st.session_state.form_data[key].copy()
 
         edited_rows = []
         for i, row in df.iterrows():
@@ -85,26 +149,14 @@ def show():
             with cols[-1]:
                 st.markdown("<div style='padding-top: 0em; text-align: center;'>", unsafe_allow_html=True)
                 if st.button("➖", key=f"remove_{key}_{i}"):
-                    st.session_state.pending_remove = (key, i)
+                    st.session_state.form_data[key] = df.drop(i).reset_index(drop=True)
                     st.rerun()
-            edited_rows.append(row_data)
 
+            edited_rows.append(row_data)
 
         st.session_state.form_data[key] = pd.DataFrame(edited_rows)
 
-        # Handle remove
-        if st.session_state.pending_remove and st.session_state.pending_remove[0] == key:
-            _, i = st.session_state.pending_remove
-            df = st.session_state.form_data[key]
-            if i < len(df):
-                df = df.drop(i).reset_index(drop=True)
-                st.session_state.form_data[key] = df
-            st.session_state.pending_remove = None
-            st.rerun()
-
-        # Handle add
-        if st.session_state.pending_add == key:
-            df = st.session_state.form_data[key]
+        if st.button(f"➕ Add Row to {label}", key=f"add_row_{key}"):
             new_row = {col: "0" for col in df.columns}
             if "Year" in new_row:
                 try:
@@ -113,15 +165,11 @@ def show():
                     new_row["Year"] = ""
             df.loc[len(df)] = new_row
             st.session_state.form_data[key] = df
-            st.session_state.pending_add = None
             st.rerun()
 
-        # Add row button
-        if st.button(f"➕ Add Row to {label}", key=f"add_row_{key}"):
-            st.session_state.pending_add = key
-            st.rerun()
-
-    # Tabs for all categories
+    # ---------------------------------------
+    # Render Tabbed Forms
+    # ---------------------------------------
     tab_titles = {
         "enrollment": "Enrollment Data",
         "graduation": "Graduation Rate",
@@ -133,20 +181,43 @@ def show():
         with tabs[idx]:
             render_table(tab_titles[sheet_key], sheet_key)
 
-    # Submit Button
+    # ---------------------------------------
+    # Submit Button & Save Logic
+    # ---------------------------------------
     _, _, col = st.columns([6, 1, 1])
     with col:
         if st.button("✅ Submit All", use_container_width=True):
-            try:
-                client = get_gspread_client()
-                wb = client.open(SPREADSHEET_NAME)
+            st.session_state.submitting = True
+            st.rerun()
 
-                for sheet_key in tab_titles:
-                    df = st.session_state.form_data[sheet_key]
-                    ws = wb.get_worksheet(SHEET_INDEXES[sheet_key])
-                    ws.clear()
-                    ws.update("A1", [df.columns.tolist()] + df.astype(str).values.tolist())
+    # Show overlay if submitting
+    if st.session_state.submitting:
+        st.markdown("<div id='overlay'>Saving data...</div>", unsafe_allow_html=True)
+        try:
+            client = get_gspread_client()
+            wb = client.open(SPREADSHEET_NAME)
 
-                st.success("✅ Data successfully written to Google Sheets.")
-            except Exception as e:
-                st.error(f"❌ Failed to save data: {e}")
+            for sheet_key in tab_titles:
+                df = st.session_state.form_data[sheet_key]
+                if "Year" in df.columns:
+                    df["Year"] = pd.to_numeric(df["Year"], errors="coerce")
+                    df = df.sort_values("Year", na_position="last").reset_index(drop=True)
+                    st.session_state.form_data[sheet_key] = df
+
+                ws = wb.get_worksheet(SHEET_INDEXES[sheet_key])
+                ws.clear()
+                ws.update("A1", [df.columns.tolist()] + df.astype(str).values.tolist())
+
+            st.session_state.submitting = False
+            st.session_state.show_success = True
+            st.rerun()
+        except Exception as e:
+            st.session_state.submitting = False
+            st.error(f"❌ Failed to save data: {e}")
+
+    # ---------------------------------------
+    # Submission Success Message
+    # ---------------------------------------
+    if st.session_state.show_success:
+        st.success("✅ Successfully submitted data!")
+        st.session_state.show_success = False
