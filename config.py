@@ -7,7 +7,7 @@ import streamlit as st
 # Google Sheets Configuration
 # -------------------------------
 
-SPREADSHEET_NAME = "School of Law Data"
+SPREADSHEET_NAME = "School of Law Dashboard Database"
 
 # Sheet index mapping for easier access
 SHEET_INDEXES = {
